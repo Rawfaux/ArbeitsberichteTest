@@ -250,6 +250,7 @@
   </div>
 
   <button class="btn btn-export" onclick="csvExport()">Als CSV exportieren</button>
+  <button class="btn btn-export" style="margin-top:10px; background:#4a5550;" onclick="perMailVersenden()">Per E-Mail versenden</button>
 
 </main>
 
@@ -331,20 +332,56 @@
       return;
     }
 
-    const kopf = ['Kunde','Datum','Techniker','Auftrag_Nr','Beginn','Ende','Pause_Min','Taetigkeit','Material','Beschreibung'];
-    const zeilen = eintraege.map(e => [
-      e.kunde, e.datum, e.techniker, e.auftrag, e.beginn, e.ende, e.pause, e.taetigkeit, e.material, e.beschreibung
-    ].map(feld => `"${String(feld).replace(/"/g, '""')}"`).join(';'));
-
-    const csvInhalt = [kopf.join(';'), ...zeilen].join('\r\n');
+    const csvInhalt = csvInhaltErzeugen();
     // BOM für korrekte Umlaute in Excel
     const blob = new Blob(['\uFEFF' + csvInhalt], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `arbeitsnachweise_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = dateiname();
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  // Baut den reinen CSV-Text - wird sowohl vom Export- als auch
+  // vom Mail-Button genutzt, damit beide immer denselben Inhalt liefern.
+  function csvInhaltErzeugen() {
+    const kopf = ['Kunde','Datum','Techniker','Auftrag_Nr','Beginn','Ende','Pause_Min','Taetigkeit','Material','Beschreibung'];
+    const zeilen = eintraege.map(e => [
+      e.kunde, e.datum, e.techniker, e.auftrag, e.beginn, e.ende, e.pause, e.taetigkeit, e.material, e.beschreibung
+    ].map(feld => `"${String(feld).replace(/"/g, '""')}"`).join(';'));
+    return [kopf.join(';'), ...zeilen].join('\r\n');
+  }
+
+  function dateiname() {
+    return `arbeitsnachweise_${new Date().toISOString().slice(0,10)}.csv`;
+  }
+
+  // Weg 1: Datei wird heruntergeladen UND das Mail-Programm mit
+  // vorausgefülltem Betreff/Text geöffnet. Der Anhang muss danach
+  // von Hand hinzugefügt werden - Browser dürfen das aus
+  // Sicherheitsgründen nicht automatisch tun.
+  function perMailVersenden() {
+    if (eintraege.length === 0) {
+      alert('Es sind noch keine Einträge vorhanden.');
+      return;
+    }
+
+    // 1. Datei wie gewohnt herunterladen
+    csvExport();
+
+    // 2. Mail-Programm mit vorbereitetem Text öffnen
+    const betreff = encodeURIComponent(`Arbeitsnachweise vom ${new Date().toLocaleDateString('de-DE')}`);
+    const text = encodeURIComponent(
+      `Hallo,\n\nanbei die Arbeitsnachweise (${eintraege.length} Einträge).\n\n` +
+      `Wichtig: Die Datei "${dateiname()}" wurde gerade heruntergeladen - ` +
+      `bitte in dieser Mail noch manuell als Anhang hinzufügen.\n\nViele Grüße`
+    );
+
+    // Hinweis, DAMIT der Nutzer weiß, was gleich passiert
+    alert('Die CSV-Datei wurde heruntergeladen. Gleich öffnet sich dein Mail-Programm - bitte die Datei dort noch als Anhang hinzufügen.');
+
+    window.location.href = `mailto:?subject=${betreff}&body=${text}`;
   }
 </script>
 
