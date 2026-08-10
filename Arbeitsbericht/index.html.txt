@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbeitsnachweis erfassen</title>
+<style>
+  :root {
+    --ink: #1c2321;
+    --paper: #f5f3ee;
+    --card: #ffffff;
+    --line: #d8d3c7;
+    --accent: #2f5233;
+    --accent-dark: #203a24;
+    --warn: #a3402a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 20px 18px 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    letter-spacing: 0.01em;
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #cfe0d0;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-dark);
+    margin: 0 0 12px;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .row > div { flex: 1; }
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #4a5550;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .check-btn {
+    padding: 8px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .check-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:active { background: var(--accent-dark); }
+  .btn-export {
+    background: var(--accent-dark);
+    color: #fff;
+    margin-top: 4px;
+  }
+  .entry {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+    font-size: 0.88rem;
+  }
+  .entry:last-child { border-bottom: none; }
+  .entry-top {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+  }
+  .entry-meta {
+    color: #6b756f;
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .empty {
+    color: #8a9490;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px 0;
+  }
+  .count-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    margin-left: 6px;
+  }
+  .note {
+    font-size: 0.78rem;
+    color: #8a7050;
+    background: #fbf3e6;
+    border: 1px solid #eaddc0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Arbeitsnachweis erfassen</h1>
+  <p>Prototyp — Export als CSV, Sage-Format folgt später</p>
+</header>
+
+<main>
+
+  <div class="note">
+    Hinweis: Diese Version speichert die Einträge nur, solange diese Seite
+    geöffnet ist. Für den Praxistest bitte die Einträge nach jeder Schicht
+    exportieren und ablegen.
+  </div>
+
+  <div class="card">
+    <h2>Neuer Eintrag</h2>
+
+    <div class="row">
+      <div>
+        <label for="kunde">Kunde / Objekt</label>
+        <input id="kunde" type="text" placeholder="z. B. Müller GmbH">
+      </div>
+      <div>
+        <label for="datum">Datum</label>
+        <input id="datum" type="date">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="techniker">Techniker</label>
+        <input id="techniker" type="text" placeholder="Name">
+      </div>
+      <div>
+        <label for="auftrag">Auftrags-Nr.</label>
+        <input id="auftrag" type="text" placeholder="optional">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="beginn">Beginn</label>
+        <input id="beginn" type="time">
+      </div>
+      <div>
+        <label for="ende">Ende</label>
+        <input id="ende" type="time">
+      </div>
+      <div>
+        <label for="pause">Pause (Min.)</label>
+        <input id="pause" type="number" min="0" step="5" placeholder="0">
+      </div>
+    </div>
+
+    <label>Art der Tätigkeit</label>
+    <div class="checks" id="taetigkeit-checks">
+      <div class="check-btn" data-value="Wartung">Wartung</div>
+      <div class="check-btn" data-value="Reparatur">Reparatur</div>
+      <div class="check-btn" data-value="Störung">Störung</div>
+      <div class="check-btn" data-value="Prüfung">Prüfung</div>
+      <div class="check-btn" data-value="Sonstiges">Sonstiges</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="material">Verwendetes Material</label>
+        <textarea id="material" placeholder="z. B. 2x Sicherung 16A, 5m Kabel NYM-J 3x1,5"></textarea>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="beschreibung">Beschreibung / Bemerkung</label>
+        <textarea id="beschreibung" placeholder="Was wurde gemacht?"></textarea>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="eintragSpeichern()">Eintrag speichern</button>
+  </div>
+
+  <div class="card">
+    <h2>Erfasste Einträge <span class="count-badge" id="count-badge">0</span></h2>
+    <div id="entry-list">
+      <div class="empty">Noch keine Einträge erfasst.</div>
+    </div>
+  </div>
+
+  <button class="btn btn-export" onclick="csvExport()">Als CSV exportieren</button>
+
+</main>
+
+<script>
+  // Daten leben nur im Speicher dieser Seite (bewusst kein localStorage,
+  // damit der Prototyp überall zuverlässig läuft). Für den echten
+  // Feldeinsatz später durch eine echte Datenhaltung ersetzen.
+  let eintraege = [];
+  let ausgewaehlteTaetigkeit = null;
+
+  document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ausgewaehlteTaetigkeit = btn.dataset.value;
+    });
+  });
+
+  function eintragSpeichern() {
+    const kunde = document.getElementById('kunde').value.trim();
+    const datum = document.getElementById('datum').value;
+    const techniker = document.getElementById('techniker').value.trim();
+
+    if (!kunde || !datum || !techniker) {
+      alert('Bitte mindestens Kunde, Datum und Techniker ausfüllen.');
+      return;
+    }
+
+    const eintrag = {
+      kunde,
+      datum,
+      techniker,
+      auftrag: document.getElementById('auftrag').value.trim(),
+      beginn: document.getElementById('beginn').value,
+      ende: document.getElementById('ende').value,
+      pause: document.getElementById('pause').value || '0',
+      taetigkeit: ausgewaehlteTaetigkeit || '',
+      material: document.getElementById('material').value.trim(),
+      beschreibung: document.getElementById('beschreibung').value.trim()
+    };
+
+    eintraege.push(eintrag);
+    renderListe();
+    formularZuruecksetzen();
+  }
+
+  function formularZuruecksetzen() {
+    ['kunde','datum','techniker','auftrag','beginn','ende','pause','material','beschreibung']
+      .forEach(id => document.getElementById(id).value = '');
+    document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(b => b.classList.remove('active'));
+    ausgewaehlteTaetigkeit = null;
+  }
+
+  function renderListe() {
+    const liste = document.getElementById('entry-list');
+    document.getElementById('count-badge').textContent = eintraege.length;
+
+    if (eintraege.length === 0) {
+      liste.innerHTML = '<div class="empty">Noch keine Einträge erfasst.</div>';
+      return;
+    }
+
+    liste.innerHTML = eintraege.map((e, i) => `
+      <div class="entry">
+        <div class="entry-top">
+          <span>${e.kunde}</span>
+          <span>${e.datum}</span>
+        </div>
+        <div class="entry-meta">
+          ${e.techniker} · ${e.taetigkeit || 'ohne Angabe'} · ${e.beginn || '–'}–${e.ende || '–'}
+        </div>
+      </div>
+    `).reverse().join('');
+  }
+
+  function csvExport() {
+    if (eintraege.length === 0) {
+      alert('Es sind noch keine Einträge vorhanden.');
+      return;
+    }
+
+    const kopf = ['Kunde','Datum','Techniker','Auftrag_Nr','Beginn','Ende','Pause_Min','Taetigkeit','Material','Beschreibung'];
+    const zeilen = eintraege.map(e => [
+      e.kunde, e.datum, e.techniker, e.auftrag, e.beginn, e.ende, e.pause, e.taetigkeit, e.material, e.beschreibung
+    ].map(feld => `"${String(feld).replace(/"/g, '""')}"`).join(';'));
+
+    const csvInhalt = [kopf.join(';'), ...zeilen].join('\r\n');
+    // BOM für korrekte Umlaute in Excel
+    const blob = new Blob(['\uFEFF' + csvInhalt], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `arbeitsnachweise_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+</body>
+</html>
