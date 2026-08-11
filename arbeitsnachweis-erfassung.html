@@ -261,6 +261,8 @@
     exportieren und ablegen.
   </div>
 
+  <div class="note" id="speicher-hinweis" style="display:none; background:#fbe6e0; border-color:#e0b3a3; color:#a3402a; font-weight:600;"></div>
+
   <div class="card">
     <h2>Neuer Eintrag</h2>
 
@@ -364,8 +366,34 @@
   const STORE_NAME = 'eintraege';
   let dbVerbindung = null;
 
+  // Manche mobilen Browser (bekannt v. a. bei iOS/Safari im Offline-
+  // Zustand) lassen den Zugriff auf die dauerhafte Speicherung
+  // einfach ohne Fehlermeldung "hängen". Diese Hilfsfunktion bricht
+  // nach kurzer Zeit selbst ab, damit die App nie unbemerkt stehen
+  // bleibt - lieber ein sichtbarer Fallback als ein stilles Einfrieren.
+  function mitTimeout(promise, ms = 3000) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Zeitüberschreitung')), ms))
+    ]);
+  }
+
+  // true = Einträge werden dauerhaft gespeichert (überleben Neustart)
+  // false = Fallback-Modus, nur für die aktuelle Sitzung (wie vorher)
+  let dauerhaftSpeichernAktiv = true;
+
+  function speicherHinweisAnzeigen(text) {
+    const feld = document.getElementById('speicher-hinweis');
+    feld.textContent = text;
+    feld.style.display = 'block';
+  }
+
   function dbOeffnen() {
     return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error('IndexedDB nicht verfügbar'));
+        return;
+      }
       const anfrage = indexedDB.open(DB_NAME, 1);
       anfrage.onupgradeneeded = () => {
         anfrage.result.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
@@ -376,27 +404,29 @@
   }
 
   async function dbEintragSpeichern(eintrag) {
-    if (!dbVerbindung) dbVerbindung = await dbOeffnen();
-    return new Promise((resolve, reject) => {
+    if (!dbVerbindung) dbVerbindung = await mitTimeout(dbOeffnen());
+    return mitTimeout(new Promise((resolve, reject) => {
       const tx = dbVerbindung.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).add(eintrag);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-    });
+    }));
   }
 
   async function dbAlleEintraegeLesen() {
-    if (!dbVerbindung) dbVerbindung = await dbOeffnen();
-    return new Promise((resolve, reject) => {
+    if (!dbVerbindung) dbVerbindung = await mitTimeout(dbOeffnen());
+    return mitTimeout(new Promise((resolve, reject) => {
       const tx = dbVerbindung.transaction(STORE_NAME, 'readonly');
       const anfrage = tx.objectStore(STORE_NAME).getAll();
       anfrage.onsuccess = () => resolve(anfrage.result);
       anfrage.onerror = () => reject(anfrage.error);
-    });
+    }));
   }
 
   // Beim Laden der Seite: gespeicherte Einträge aus vorherigen
-  // Sitzungen wiederherstellen (funktioniert auch offline).
+  // Sitzungen wiederherstellen (funktioniert auch offline). Klappt
+  // das nicht binnen 3 Sekunden, schaltet die App sichtbar in den
+  // Fallback-Modus statt einfach nichts zu tun.
   let eintraege = [];
   (async () => {
     try {
@@ -404,6 +434,9 @@
       renderListe();
     } catch (fehler) {
       console.error('Konnte gespeicherte Einträge nicht laden:', fehler);
+      dauerhaftSpeichernAktiv = false;
+      eintraege = [];
+      speicherHinweisAnzeigen('⚠️ Dauerhafte Speicherung gerade nicht verfügbar. Die App funktioniert normal, aber Einträge gehen beim Schließen verloren - bitte vor dem Schließen exportieren/versenden.');
     }
   })();
 
@@ -501,15 +534,26 @@
     };
 
     try {
-      await dbEintragSpeichern(eintrag);
-      // Nach dem Speichern die komplette, aktuelle Liste aus der
-      // Datenbank neu laden - so bleibt die Anzeige immer exakt
-      // synchron mit dem, was wirklich dauerhaft gesichert ist.
-      eintraege = await dbAlleEintraegeLesen();
+      if (dauerhaftSpeichernAktiv) {
+        await dbEintragSpeichern(eintrag);
+        eintraege = await dbAlleEintraegeLesen();
+      } else {
+        // Fallback-Modus: nur für die aktuelle Sitzung merken
+        eintraege.push(eintrag);
+      }
       renderListe();
       formularZuruecksetzen();
     } catch (fehler) {
-      alert('Eintrag konnte nicht gespeichert werden: ' + fehler);
+      // Dauerhafte Speicherung ist gerade eingebrochen (z.B. Offline-
+      // Bug) -> sofort auf Fallback umschalten, ABER den Eintrag,
+      // den der Nutzer gerade eingegeben hat, trotzdem übernehmen
+      // statt ihn wortlos zu verwerfen.
+      console.error('Dauerhafte Speicherung fehlgeschlagen, wechsle in Fallback-Modus:', fehler);
+      dauerhaftSpeichernAktiv = false;
+      eintraege.push(eintrag);
+      renderListe();
+      formularZuruecksetzen();
+      speicherHinweisAnzeigen('⚠️ Dauerhafte Speicherung gerade nicht verfügbar. Eintrag wurde trotzdem übernommen, geht aber beim Schließen der App verloren - bitte bald exportieren/versenden.');
     }
   }
 
