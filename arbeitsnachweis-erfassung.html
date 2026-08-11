@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbeitsnachweis erfassen</title>
+
+<!-- Macht die App auf Android installierbar (Chrome zeigt "Zum
+     Startbildschirm hinzufügen" an) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#203a24">
+
+<!-- iOS ignoriert das Manifest teilweise und braucht eigene Tags,
+     damit die App auf dem iPhone/iPad wie eine echte App aussieht
+     (kein Safari-Adressleisten-Rahmen mehr) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Arbeitsnachweis">
+
+<style>
+  :root {
+    --ink: #1c2321;
+    --paper: #f5f3ee;
+    --card: #ffffff;
+    --line: #d8d3c7;
+    --accent: #2f5233;
+    --accent-dark: #203a24;
+    --warn: #a3402a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 20px 18px 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    letter-spacing: 0.01em;
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #cfe0d0;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-dark);
+    margin: 0 0 12px;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .row > div { flex: 1; }
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #4a5550;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .check-btn {
+    padding: 8px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .check-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:active { background: var(--accent-dark); }
+  .btn-export {
+    background: var(--accent-dark);
+    color: #fff;
+    margin-top: 4px;
+  }
+  .entry {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+    font-size: 0.88rem;
+  }
+  .entry:last-child { border-bottom: none; }
+  .entry-top {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+  }
+  .entry-meta {
+    color: #6b756f;
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+  .empty {
+    color: #8a9490;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px 0;
+  }
+  .count-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    margin-left: 6px;
+  }
+  .note {
+    font-size: 0.78rem;
+    color: #8a7050;
+    background: #fbf3e6;
+    border: 1px solid #eaddc0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+  .feld-mit-mic {
+    position: relative;
+  }
+  .mic-btn {
+    position: absolute;
+    right: 6px;
+    top: 26px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .mic-btn.aufnahme {
+    background: var(--warn);
+  }
+  .raum-card {
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fbfaf7;
+  }
+  .raum-titel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .raum-titel input {
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+  }
+  .bauteil-zeile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #ece8dd;
+    font-size: 0.85rem;
+  }
+  .bauteil-zeile:last-of-type { border-bottom: none; }
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stepper button {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .stepper span {
+    min-width: 18px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .btn-sekundaer {
+    background: #fff;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Arbeitsnachweis erfassen</h1>
+  <p>Prototyp — Export als CSV, Sage-Format folgt später</p>
+</header>
+
+<main>
+
+  <div class="note">
+    Hinweis: Diese Version speichert die Einträge nur, solange diese Seite
+    geöffnet ist. Für den Praxistest bitte die Einträge nach jeder Schicht
+    exportieren und ablegen.
+  </div>
+
+  <div class="card">
+    <h2>Neuer Eintrag</h2>
+
+    <div class="row">
+      <div>
+        <label for="kunde">Kunde / Objekt</label>
+        <input id="kunde" type="text" placeholder="z. B. Müller GmbH">
+      </div>
+      <div>
+        <label for="datum">Datum</label>
+        <input id="datum" type="date">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="techniker">Techniker</label>
+        <input id="techniker" type="text" placeholder="Name">
+      </div>
+      <div>
+        <label for="auftrag">Auftrags-Nr.</label>
+        <input id="auftrag" type="text" placeholder="optional">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="beginn">Beginn</label>
+        <input id="beginn" type="time">
+      </div>
+      <div>
+        <label for="ende">Ende</label>
+        <input id="ende" type="time">
+      </div>
+      <div>
+        <label for="pause">Pause (Min.)</label>
+        <input id="pause" type="number" min="0" step="5" placeholder="0">
+      </div>
+    </div>
+
+    <label>Art der Tätigkeit</label>
+    <div class="checks" id="taetigkeit-checks">
+      <div class="check-btn" data-value="Wartung">Wartung</div>
+      <div class="check-btn" data-value="Reparatur">Reparatur</div>
+      <div class="check-btn" data-value="Störung">Störung</div>
+      <div class="check-btn" data-value="Prüfung">Prüfung</div>
+      <div class="check-btn" data-value="Sonstiges">Sonstiges</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="material">Verwendetes Material</label>
+        <textarea id="material" placeholder="z. B. 2x Sicherung 16A, 5m Kabel NYM-J 3x1,5"></textarea>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="feld-mit-mic">
+        <label for="beschreibung">Beschreibung / Bemerkung</label>
+        <textarea id="beschreibung" placeholder="Was wurde gemacht?"></textarea>
+        <button type="button" class="mic-btn" id="mic-beschreibung" onclick="diktatUmschalten('beschreibung')">🎤</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="eintragSpeichern()">Eintrag speichern</button>
+  </div>
+
+  <div class="card">
+    <h2>Räume &amp; Material (optional)</h2>
+    <div class="note" style="margin-bottom:12px;">
+      Hier Raum für Raum die verbauten Teile zählen. Beim Übernehmen wird
+      pro Raum eine Zusammenfassung in das Material-Feld oben geschrieben
+      (bestehender Text bleibt stehen).
+    </div>
+    <div id="raum-liste"></div>
+    <button class="btn btn-sekundaer" onclick="raumHinzufuegen()">+ Raum hinzufügen</button>
+  </div>
+
+  <div class="card">
+    <h2>Erfasste Einträge <span class="count-badge" id="count-badge">0</span></h2>
+    <div id="entry-list">
+      <div class="empty">Noch keine Einträge erfasst.</div>
+    </div>
+  </div>
+
+  <button class="btn btn-export" onclick="csvExport()">Als CSV exportieren</button>
+  <button class="btn btn-export" style="margin-top:10px; background:#4a5550;" onclick="perMailVersenden()">Per E-Mail versenden</button>
+
+</main>
+
+<script>
+  // ---------------------------------------------------------------
+  // Dauerhafte Speicherung im Browser selbst (IndexedDB) - läuft
+  // komplett ohne Internet und ohne Server. Anders als eine simple
+  // Variable überlebt das auch das Schließen der Seite/App.
+  // Der Nachteil: der Zugriff ist "asynchron" (dauert einen winzigen
+  // Moment und läuft im Hintergrund) - deshalb die "async/await"-
+  // Schreibweise in den Funktionen weiter unten.
+  // ---------------------------------------------------------------
+  const DB_NAME = 'arbeitsnachweis_db';
+  const STORE_NAME = 'eintraege';
+  let dbVerbindung = null;
+
+  function dbOeffnen() {
+    return new Promise((resolve, reject) => {
+      const anfrage = indexedDB.open(DB_NAME, 1);
+      anfrage.onupgradeneeded = () => {
+        anfrage.result.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      };
+      anfrage.onsuccess = () => resolve(anfrage.result);
+      anfrage.onerror = () => reject(anfrage.error);
+    });
+  }
+
+  async function dbEintragSpeichern(eintrag) {
+    if (!dbVerbindung) dbVerbindung = await dbOeffnen();
+    return new Promise((resolve, reject) => {
+      const tx = dbVerbindung.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).add(eintrag);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbAlleEintraegeLesen() {
+    if (!dbVerbindung) dbVerbindung = await dbOeffnen();
+    return new Promise((resolve, reject) => {
+      const tx = dbVerbindung.transaction(STORE_NAME, 'readonly');
+      const anfrage = tx.objectStore(STORE_NAME).getAll();
+      anfrage.onsuccess = () => resolve(anfrage.result);
+      anfrage.onerror = () => reject(anfrage.error);
+    });
+  }
+
+  // Beim Laden der Seite: gespeicherte Einträge aus vorherigen
+  // Sitzungen wiederherstellen (funktioniert auch offline).
+  let eintraege = [];
+  (async () => {
+    try {
+      eintraege = await dbAlleEintraegeLesen();
+      renderListe();
+    } catch (fehler) {
+      console.error('Konnte gespeicherte Einträge nicht laden:', fehler);
+    }
+  })();
+
+  let ausgewaehlteTaetigkeit = null;
+
+  document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ausgewaehlteTaetigkeit = btn.dataset.value;
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Spracheingabe (Web Speech API). Läuft nur in Chrome/Edge/Safari
+  // im Browser-Tab, NICHT wenn die Seite auf iPhone/iPad als Icon
+  // auf den Home-Bildschirm gespeichert wurde (Apple-Einschränkung).
+  // ---------------------------------------------------------------
+  const SpeechRecognitionKlasse = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let laufendeErkennung = null; // merkt sich, welches Feld gerade aufnimmt
+
+  function diktatUmschalten(feldId) {
+    if (!SpeechRecognitionKlasse) {
+      alert('Spracheingabe wird von diesem Browser leider nicht unterstützt. Bitte Chrome, Edge oder Safari verwenden.');
+      return;
+    }
+
+    // Läuft bereits eine Aufnahme für dieses Feld -> stoppen
+    if (laufendeErkennung && laufendeErkennung.feldId === feldId) {
+      laufendeErkennung.recognition.stop();
+      return;
+    }
+
+    // Läuft eine Aufnahme für ein ANDERES Feld -> erst die stoppen
+    if (laufendeErkennung) {
+      laufendeErkennung.recognition.stop();
+    }
+
+    const recognition = new SpeechRecognitionKlasse();
+    recognition.lang = 'de-DE';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    const micButton = document.getElementById(`mic-${feldId}`);
+    micButton.classList.add('aufnahme');
+    micButton.textContent = '⏹';
+
+    recognition.onresult = (event) => {
+      const neuerText = event.results[0][0].transcript;
+      const feld = document.getElementById(feldId);
+      // WICHTIG: anhängen statt überschreiben, damit mehrfaches
+      // Diktieren und bereits getippter Text erhalten bleiben.
+      feld.value = feld.value.trim().length > 0
+        ? feld.value.trim() + ', ' + neuerText
+        : neuerText;
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error !== 'no-speech') {
+        alert('Spracherkennung fehlgeschlagen: ' + event.error);
+      }
+    };
+
+    recognition.onend = () => {
+      micButton.classList.remove('aufnahme');
+      micButton.textContent = '🎤';
+      laufendeErkennung = null;
+    };
+
+    laufendeErkennung = { feldId, recognition };
+    recognition.start();
+  }
+
+  async function eintragSpeichern() {
+    const kunde = document.getElementById('kunde').value.trim();
+    const datum = document.getElementById('datum').value;
+    const techniker = document.getElementById('techniker').value.trim();
+
+    if (!kunde || !datum || !techniker) {
+      alert('Bitte mindestens Kunde, Datum und Techniker ausfüllen.');
+      return;
+    }
+
+    const eintrag = {
+      kunde,
+      datum,
+      techniker,
+      auftrag: document.getElementById('auftrag').value.trim(),
+      beginn: document.getElementById('beginn').value,
+      ende: document.getElementById('ende').value,
+      pause: document.getElementById('pause').value || '0',
+      taetigkeit: ausgewaehlteTaetigkeit || '',
+      material: document.getElementById('material').value.trim(),
+      beschreibung: document.getElementById('beschreibung').value.trim()
+    };
+
+    try {
+      await dbEintragSpeichern(eintrag);
+      // Nach dem Speichern die komplette, aktuelle Liste aus der
+      // Datenbank neu laden - so bleibt die Anzeige immer exakt
+      // synchron mit dem, was wirklich dauerhaft gesichert ist.
+      eintraege = await dbAlleEintraegeLesen();
+      renderListe();
+      formularZuruecksetzen();
+    } catch (fehler) {
+      alert('Eintrag konnte nicht gespeichert werden: ' + fehler);
+    }
+  }
+
+  function formularZuruecksetzen() {
+    ['kunde','datum','techniker','auftrag','beginn','ende','pause','material','beschreibung']
+      .forEach(id => document.getElementById(id).value = '');
+    document.querySelectorAll('#taetigkeit-checks .check-btn').forEach(b => b.classList.remove('active'));
+    ausgewaehlteTaetigkeit = null;
+  }
+
+  function renderListe() {
+    const liste = document.getElementById('entry-list');
+    document.getElementById('count-badge').textContent = eintraege.length;
+
+    if (eintraege.length === 0) {
+      liste.innerHTML = '<div class="empty">Noch keine Einträge erfasst.</div>';
+      return;
+    }
+
+    liste.innerHTML = eintraege.map((e, i) => `
+      <div class="entry">
+        <div class="entry-top">
+          <span>${e.kunde}</span>
+          <span>${e.datum}</span>
+        </div>
+        <div class="entry-meta">
+          ${e.techniker} · ${e.taetigkeit || 'ohne Angabe'} · ${e.beginn || '–'}–${e.ende || '–'}
+        </div>
+      </div>
+    `).reverse().join('');
+  }
+
+  function csvExport() {
+    if (eintraege.length === 0) {
+      alert('Es sind noch keine Einträge vorhanden.');
+      return;
+    }
+
+    const csvInhalt = csvInhaltErzeugen();
+    // BOM für korrekte Umlaute in Excel
+    const blob = new Blob(['\uFEFF' + csvInhalt], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = dateiname();
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Baut den reinen CSV-Text - wird sowohl vom Export- als auch
+  // vom Mail-Button genutzt, damit beide immer denselben Inhalt liefern.
+  function csvInhaltErzeugen() {
+    const kopf = ['Kunde','Datum','Techniker','Auftrag_Nr','Beginn','Ende','Pause_Min','Taetigkeit','Material','Beschreibung'];
+    const zeilen = eintraege.map(e => [
+      e.kunde, e.datum, e.techniker, e.auftrag, e.beginn, e.ende, e.pause, e.taetigkeit, e.material, e.beschreibung
+    ].map(feld => `"${String(feld).replace(/"/g, '""')}"`).join(';'));
+    return [kopf.join(';'), ...zeilen].join('\r\n');
+  }
+
+  function dateiname() {
+    return `arbeitsnachweise_${new Date().toISOString().slice(0,10)}.csv`;
+  }
+
+  // Weg 1: Datei wird heruntergeladen UND das Mail-Programm mit
+  // vorausgefülltem Betreff/Text geöffnet. Der Anhang muss danach
+  // von Hand hinzugefügt werden - Browser dürfen das aus
+  // Sicherheitsgründen nicht automatisch tun.
+  function perMailVersenden() {
+    if (eintraege.length === 0) {
+      alert('Es sind noch keine Einträge vorhanden.');
+      return;
+    }
+
+    // 1. Datei wie gewohnt herunterladen
+    csvExport();
+
+    // 2. Mail-Programm mit vorbereitetem Text öffnen
+    const betreff = encodeURIComponent(`Arbeitsnachweise vom ${new Date().toLocaleDateString('de-DE')}`);
+    const text = encodeURIComponent(
+      `Hallo,\n\nanbei die Arbeitsnachweise (${eintraege.length} Einträge).\n\n` +
+      `Wichtig: Die Datei "${dateiname()}" wurde gerade heruntergeladen - ` +
+      `bitte in dieser Mail noch manuell als Anhang hinzufügen.\n\nViele Grüße`
+    );
+
+    // Hinweis, DAMIT der Nutzer weiß, was gleich passiert
+    alert('Die CSV-Datei wurde heruntergeladen. Gleich öffnet sich dein Mail-Programm - bitte die Datei dort noch als Anhang hinzufügen.');
+
+    window.location.href = `mailto:?subject=${betreff}&body=${text}`;
+  }
+
+  // ---------------------------------------------------------------
+  // Räume & Material - Stückzahl-Erfassung pro Raum
+  // ---------------------------------------------------------------
+  const BAUTEIL_TYPEN = [
+    'Wechsel-schalter', 'Serien-schalter', 'Wechsel Kontroll', 'Taster',
+    'Kreuz-schalter', 'Steckdose 1-f', 'TV-Dose', 'Netzwerk-dose',
+    'Rahmen 1-f', 'Rahmen 2-f', 'Rahmen 3-f'
+  ];
+
+  let raeume = []; // jeder Raum: { name, bauteile: {typ: anzahl}, notiz }
+
+  function raumHinzufuegen() {
+    const name = prompt('Name des Raums (z. B. Wohnzimmer, Küche, Flur):', '');
+
+    // Abbrechen, wenn nichts eingegeben wurde (Dialog abgebrochen
+    // oder nur Leerzeichen) - ohne Namen wird kein Raum angelegt.
+    if (!name || !name.trim()) {
+      return;
+    }
+
+    const bauteile = {};
+    BAUTEIL_TYPEN.forEach(t => bauteile[t] = 0);
+    raeume.push({
+      name: name.trim(),
+      bauteile,
+      notiz: ''
+    });
+    renderRaeume();
+  }
+
+  function bauteilAendern(raumIndex, typ, delta) {
+    const raum = raeume[raumIndex];
+    raum.bauteile[typ] = Math.max(0, raum.bauteile[typ] + delta);
+    renderRaeume();
+  }
+
+  function raumNameAendern(raumIndex, neuerName) {
+    raeume[raumIndex].name = neuerName;
+  }
+
+  function raumNotizAendern(raumIndex, neueNotiz) {
+    raeume[raumIndex].notiz = neueNotiz;
+  }
+
+  // Baut aus den gezählten Bauteilen eines Raums eine lesbare Zeile,
+  // z. B. "Wohnzimmer: 2x Wechsel-schalter, 1x Rahmen 2-f (Notiz: ...)"
+  function raumZusammenfassung(raum) {
+    const teile = Object.entries(raum.bauteile)
+      .filter(([, anzahl]) => anzahl > 0)
+      .map(([typ, anzahl]) => `${anzahl}x ${typ}`);
+
+    if (teile.length === 0) return null;
+
+    let zeile = `${raum.name}: ${teile.join(', ')}`;
+    if (raum.notiz.trim()) zeile += ` (Notiz: ${raum.notiz.trim()})`;
+    return zeile;
+  }
+
+  // Übernimmt einen einzelnen Raum ins Material-Feld (anhängen, nicht
+  // überschreiben - gleiches Prinzip wie bei der Spracheingabe) und
+  // entfernt den Raum danach aus der Liste.
+  function raumUebernehmen(raumIndex) {
+    const zeile = raumZusammenfassung(raeume[raumIndex]);
+    if (!zeile) {
+      alert('In diesem Raum wurde noch nichts gezählt.');
+      return;
+    }
+
+    const materialFeld = document.getElementById('material');
+    materialFeld.value = materialFeld.value.trim().length > 0
+      ? materialFeld.value.trim() + '; ' + zeile
+      : zeile;
+
+    raeume.splice(raumIndex, 1);
+    renderRaeume();
+  }
+
+  function raumEntfernen(raumIndex) {
+    raeume.splice(raumIndex, 1);
+    renderRaeume();
+  }
+
+  function renderRaeume() {
+    const ziel = document.getElementById('raum-liste');
+
+    ziel.innerHTML = raeume.map((raum, i) => `
+      <div class="raum-card">
+        <div class="raum-titel">
+          <input type="text" value="${raum.name}"
+                 onchange="raumNameAendern(${i}, this.value)">
+          <button class="mic-btn" style="position:static; background:#a3402a;"
+                  onclick="raumEntfernen(${i})">✕</button>
+        </div>
+        ${BAUTEIL_TYPEN.map(typ => `
+          <div class="bauteil-zeile">
+            <span>${typ}</span>
+            <div class="stepper">
+              <button onclick="bauteilAendern(${i}, '${typ}', -1)">−</button>
+              <span>${raum.bauteile[typ]}</span>
+              <button onclick="bauteilAendern(${i}, '${typ}', 1)">+</button>
+            </div>
+          </div>
+        `).join('')}
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Notiz / Besonderheit für diesen Raum</label>
+            <input type="text" placeholder="z. B. Arbeitsplattenhöhe"
+                   value="${raum.notiz}"
+                   onchange="raumNotizAendern(${i}, this.value)">
+          </div>
+        </div>
+        <button class="btn btn-sekundaer" style="margin-top:10px;"
+                onclick="raumUebernehmen(${i})">In Material übernehmen</button>
+      </div>
+    `).join('');
+  }
+  // Service Worker aktivieren, damit die App auch offline lädt.
+  // Läuft nur, wenn die Seite über http(s) erreicht wird (Netlify
+  // erfüllt das) - nicht bei einer lokal doppelt geklickten Datei.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .catch((fehler) => console.error('Service Worker Registrierung fehlgeschlagen:', fehler));
+    });
+  }
+</script>
+
+</body>
+</html>
