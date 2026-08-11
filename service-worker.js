@@ -3,7 +3,7 @@
 // hier: die App-Dateien einmal zwischenspeichern (cachen), damit sie
 // beim nächsten Öffnen auch ohne Internetverbindung geladen werden.
 
-const CACHE_NAME = 'arbeitsnachweis-cache-v1';
+const CACHE_NAME = 'arbeitsnachweis-cache-v2';
 const ZU_CACHENDE_DATEIEN = [
   './arbeitsnachweis-erfassung.html',
   './manifest.json',
